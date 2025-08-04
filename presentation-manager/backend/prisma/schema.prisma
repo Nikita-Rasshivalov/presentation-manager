@@ -1,0 +1,62 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Presentation {
+  id        String   @id @default(uuid())
+  title     String
+  createdAt DateTime @default(now())
+  slides    Slide[]
+  sessions  UserSession[]
+
+  @@index([createdAt])
+}
+
+model Slide {
+  id              String   @id @default(uuid())
+  slideIndex      Int
+  presentationId  String
+  presentation    Presentation   @relation(fields: [presentationId], references: [id])
+  elements        SlideElement[]
+  createdAt       DateTime @default(now())
+
+  @@index([presentationId, slideIndex])
+}
+
+model SlideElement {
+  id        String   @id @default(uuid())
+  slideId   String
+  slide     Slide    @relation(fields: [slideId], references: [id])
+  content   String
+  posX      Float
+  posY      Float
+  width     Float
+  height    Float
+  updatedAt DateTime @updatedAt
+
+  @@index([slideId])
+}
+
+model UserSession {
+  id             String   @id @default(uuid())
+  nickname       String
+  socketId       String?
+  role           UserRole @default(VIEWER)
+  presentationId String?
+  presentation   Presentation? @relation(fields: [presentationId], references: [id])
+  joinedAt       DateTime @default(now())
+
+  @@index([presentationId])
+  @@index([socketId])
+}
+
+enum UserRole {
+  CREATOR
+  EDITOR
+  VIEWER
+}
