@@ -32,7 +32,6 @@ export const SlideList: React.FC<SlideListProps> = ({
           </button>
         )}
       </div>
-      {/* Вот здесь задаём ограничение по высоте и прокрутку */}
       <div className="flex-1 overflow-y-auto bg-white max-h-[calc(100vh-100px)]">
         {slides.length === 0 && (
           <div className="p-4 text-center text-gray-400">

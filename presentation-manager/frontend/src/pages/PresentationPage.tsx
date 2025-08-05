@@ -1,75 +1,54 @@
-import React, { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useParams } from "react-router-dom";
-
 import { usePresentationStore } from "../store/usePresentationStore";
 import { useLoadPresentation } from "../hooks/useLoadPresentation";
 import { usePresentationSocket } from "../hooks/usePresentationSocket";
 import { LoadingView } from "../components/PresentationPage/LoadingView";
 import { NoSlidesView } from "../components/PresentationPage/NoSlidesView";
 import { PresentationView } from "../components/PresentationPage/PresentationView";
-import { Presentation, User } from "../types/types";
+import { User, Presentation } from "../types/types";
 
 export const PresentationPage: React.FC = () => {
-  const { id: presentationId, nickname } = useParams<{
+  const { id: presentationId = "", nickname = "" } = useParams<{
     id?: string;
     nickname?: string;
   }>();
 
-  const safePresentationId = presentationId ?? "";
-  const safeNickname = nickname ?? "";
+  const { presentation, role, setPresentation, updateUsers, setRole } =
+    usePresentationStore();
 
-  const { presentation, role, setPresentation } = usePresentationStore();
+  useLoadPresentation(presentationId, nickname);
 
-  useLoadPresentation(safePresentationId, safeNickname);
-  useEffect(() => {
-    if (!safePresentationId || !safeNickname) {
-      console.warn("Missing presentationId or nickname, skipping join");
-      return;
-    }
-  }, [safePresentationId, safeNickname]);
   const handlePresentationUpdate = useCallback(
-    (updatedPresentation: Presentation) => {
-      setPresentation(updatedPresentation);
-    },
+    (updated: Presentation) => setPresentation(updated),
     [setPresentation]
   );
 
-  const { socket, emitPresentationUpdate, emitChangeUserRole } =
-    usePresentationSocket(safePresentationId, {
-      nickname: safeNickname,
-      onPresentationUpdate: handlePresentationUpdate,
-    });
-
   const handleUsersUpdate = useCallback(
-    (updatedUsers: User[]) => {
-      if (!presentation) return;
-      const updatedPresentation = { ...presentation, users: updatedUsers };
-      setPresentation(updatedPresentation);
+    (users: User[]) => {
+      updateUsers(users);
+      const me = users.find((u) => u.nickname === nickname);
+      if (me && me.role !== role) setRole(me.role);
     },
-    [presentation, setPresentation]
+    [updateUsers, nickname, role, setRole]
   );
 
-  useEffect(() => {
-    if (!socket) return;
+  const { socket, emitPresentationUpdate, emitChangeUserRole } =
+    usePresentationSocket(presentationId, {
+      nickname,
+      onPresentationUpdate: handlePresentationUpdate,
+      onUsersUpdate: handleUsersUpdate,
+    });
 
-    socket.on("usersUpdate", handleUsersUpdate);
-
-    return () => {
-      socket.off("usersUpdate", handleUsersUpdate);
-    };
-  }, [socket, handleUsersUpdate]);
-
-  if (!presentation || !role || !safeNickname) {
-    return <LoadingView />;
-  }
+  if (!presentation || !role || !nickname) return <LoadingView />;
 
   if (!presentation.slides?.length) {
     return (
       <NoSlidesView
-        presentationId={safePresentationId}
+        presentationId={presentationId}
         presentation={presentation}
         role={role}
-        nickname={safeNickname}
+        nickname={nickname}
         socket={{ socket, emitPresentationUpdate, emitChangeUserRole }}
       />
     );
@@ -79,9 +58,9 @@ export const PresentationPage: React.FC = () => {
     <PresentationView
       presentation={presentation}
       setPresentation={setPresentation}
-      presentationId={safePresentationId}
+      presentationId={presentationId}
       role={role}
-      nickname={safeNickname}
+      nickname={nickname}
       emitPresentationUpdate={emitPresentationUpdate}
       emitChangeUserRole={emitChangeUserRole}
     />

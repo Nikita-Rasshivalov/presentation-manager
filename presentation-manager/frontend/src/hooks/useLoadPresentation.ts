@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { usePresentationStore } from "../store/usePresentationStore";
-import { Presentation, RoleResponse } from "../types/types";
+import { Presentation, RoleResponse, User } from "../types/types";
 import { toast } from "react-toastify";
 
 export function useLoadPresentation(presentationId: string, nickname: string) {
@@ -24,12 +24,21 @@ export function useLoadPresentation(presentationId: string, nickname: string) {
           }),
         ]);
 
-        setPresentation(presRes.data);
-        setRole(roleRes.data.role);
+        const sessions = (presRes.data as any).sessions || [];
+        const users: User[] = sessions.map((s: any) => ({
+          id: s.id,
+          nickname: s.nickname,
+          role: s.role,
+        }));
 
-        if (presRes.data.users) {
-          updateUsers(presRes.data.users);
-        }
+        const presentationWithUsers = {
+          ...presRes.data,
+          users,
+        };
+
+        setPresentation(presentationWithUsers);
+        setRole(roleRes.data.role);
+        updateUsers(users);
       } catch {
         toast.error("Failed to fetch presentations");
         navigate("/");

@@ -161,12 +161,11 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
   });
 
   socket.on("disconnect", async () => {
-    //// что то не то
     try {
       const delay = 1000;
 
       setTimeout(async () => {
-        const stillConnected = await io.sockets.sockets.get(socket.id);
+        const stillConnected = io.sockets.sockets.get(socket.id);
         if (!stillConnected) {
           await prisma.userSession.deleteMany({
             where: { socketId: socket.id },

@@ -1,18 +1,46 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { socket as globalSocket } from "../lib/socket";
-import { Presentation, UserRole } from "../types/types";
+import { Presentation, User, UserRole } from "../types/types";
 
 export interface PresentationSocketOptions {
-  onPresentationUpdate: (presentation: Presentation) => void;
   nickname: string;
+  onPresentationUpdate: (presentation: Presentation) => void;
+  onUsersUpdate?: (users: User[]) => void;
+  onOwnRoleChange?: (newRole: UserRole) => void;
 }
 
 export const usePresentationSocket = (
   presentationId: string,
   options: PresentationSocketOptions
 ) => {
-  const { onPresentationUpdate, nickname } = options;
+  const { onPresentationUpdate, onUsersUpdate, onOwnRoleChange, nickname } =
+    options;
   const [connected, setConnected] = useState(false);
+  const lastOwnRoleRef = useRef<UserRole | null>(null);
+
+  const handlePresentationUpdate = useCallback(
+    (presentation: Presentation) => {
+      onPresentationUpdate(presentation);
+    },
+    [onPresentationUpdate]
+  );
+
+  const handleUsersUpdate = useCallback(
+    (users: User[]) => {
+      if (onUsersUpdate) {
+        onUsersUpdate(users);
+      }
+
+      const me = users.find((u) => u.nickname === nickname);
+      if (me && me.role !== lastOwnRoleRef.current) {
+        lastOwnRoleRef.current = me.role;
+        if (onOwnRoleChange) {
+          onOwnRoleChange(me.role);
+        }
+      }
+    },
+    [nickname, onUsersUpdate, onOwnRoleChange]
+  );
 
   useEffect(() => {
     if (!presentationId || !nickname) return;
@@ -23,16 +51,18 @@ export const usePresentationSocket = (
 
     globalSocket.emit("join_presentation", { presentationId, nickname });
 
-    globalSocket.on("presentationUpdate", onPresentationUpdate);
+    globalSocket.on("presentationUpdate", handlePresentationUpdate);
+    globalSocket.on("usersUpdate", handleUsersUpdate);
 
     setConnected(true);
 
     return () => {
-      globalSocket.off("presentationUpdate", onPresentationUpdate);
+      globalSocket.off("presentationUpdate", handlePresentationUpdate);
+      globalSocket.off("usersUpdate", handleUsersUpdate);
       globalSocket.emit("leave_presentation", { presentationId, nickname });
       setConnected(false);
     };
-  }, [presentationId, nickname, onPresentationUpdate]);
+  }, [presentationId, nickname, handlePresentationUpdate, handleUsersUpdate]);
 
   const emitPresentationUpdate = (presentation: Presentation) => {
     if (connected) {

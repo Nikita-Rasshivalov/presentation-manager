@@ -1,17 +1,13 @@
-import React, { useState } from "react";
+import React, { useState } from "react"; //меняем
 import ReactMarkdown from "react-markdown";
-
 import { SlideList } from "../../components/SlideList";
 import { SlideView } from "../../components/SlideView";
 import { UserList } from "../../components/UserList";
-
 import { usePresentationStore } from "../../store/usePresentationStore";
 import { useSlideActions } from "../../hooks/useSlideActions";
 import { Slide, UserRole, Presentation } from "../../types/types";
-
 import { addSlide, removeSlide } from "../../api/presentationApi";
 import { toast } from "react-toastify";
-
 import { EyeIcon } from "@heroicons/react/24/outline";
 
 interface PresentationViewProps {
@@ -36,9 +32,6 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
     usePresentationStore();
 
   const [presentMode, setPresentMode] = useState(false);
-
-  // Убираем повторный usePresentationSocket здесь!
-
   const slide = presentation.slides[currentSlideIndex];
 
   const { onUpdateContent, onUpdatePosition, addTextBlock } = useSlideActions(
