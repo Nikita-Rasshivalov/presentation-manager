@@ -18,9 +18,13 @@ export class PresentationController {
   createPresentation = async (req: Request, res: Response) => {
     try {
       const { title, nickname } = req.body;
-      const data = await this.presentationService.create(title, nickname);
-      res.status(201).json(data);
-    } catch {
+      const presentation = await this.presentationService.create(
+        title,
+        nickname
+      );
+      res.status(201).json(presentation);
+    } catch (error) {
+      console.error("Error creating presentation:", error);
       res.status(500).json({ error: "Failed to create presentation" });
     }
   };
@@ -40,10 +44,17 @@ export class PresentationController {
   joinPresentation = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { nickname } = req.body;
-      const session = await this.presentationService.join(id, nickname);
+      const { nickname, socketId } = req.body;
+
+      const session = await this.presentationService.join(
+        id,
+        nickname,
+        socketId
+      );
+
       res.status(200).json(session);
-    } catch {
+    } catch (error) {
+      console.error("Join error:", error);
       res.status(500).json({ error: "Failed to join presentation" });
     }
   };
@@ -64,8 +75,7 @@ export class PresentationController {
 
   removeSlide = async (req: Request, res: Response) => {
     try {
-      const { slideId } = req.params;
-      const { nickname } = req.body;
+      const { slideId, nickname } = req.params;
 
       const slide = await this.presentationService.getSlideByIdRaw(slideId);
       if (!slide) {
@@ -127,12 +137,22 @@ export class PresentationController {
     if (typeof presentationId !== "string" || typeof nickname !== "string") {
       return res.status(400).json({ error: "Invalid params" });
     }
+    const trimmedPresentationId = presentationId.trim();
+    const trimmedNickname = nickname.trim();
 
     const session = await prisma.userSession.findFirst({
-      where: { presentationId, nickname },
+      where: {
+        presentationId: trimmedPresentationId,
+        nickname: trimmedNickname,
+      },
     });
 
     if (!session) {
+      console.warn(
+        "Session not found for:",
+        trimmedPresentationId,
+        trimmedNickname
+      );
       return res.status(404).json({ error: "Session not found" });
     }
 

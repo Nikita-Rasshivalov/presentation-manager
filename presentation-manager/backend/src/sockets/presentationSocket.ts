@@ -5,11 +5,18 @@ import {
   getSession,
   isCreator,
   isEditor,
-  emitUserList,
   validateStringField,
   validatePosition,
   validateSize,
 } from "../utils/utils.ts";
+
+export async function emitUserList(io: Server, presentationId: string) {
+  const users = await prisma.userSession.findMany({
+    where: { presentationId },
+    select: { id: true, nickname: true, role: true },
+  });
+  io.to(presentationId).emit("usersUpdate", users);
+}
 
 export function handlePresentationEvents(socket: Socket, io: Server) {
   let currentPresentationId: string | null = null;
@@ -19,15 +26,27 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
       validateStringField(presentationId, "presentationId");
       validateStringField(nickname, "nickname");
 
-      const exists = await prisma.userSession.findFirst({
+      const existingSession = await prisma.userSession.findFirst({
         where: { presentationId, nickname },
       });
-      if (exists) {
-        socket.emit("join_error", "Nickname already taken");
+
+      if (existingSession) {
+        // Обновляем socketId, если нужно
+        if (existingSession.socketId !== socket.id) {
+          await prisma.userSession.update({
+            where: { id: existingSession.id },
+            data: { socketId: socket.id },
+          });
+        }
+        // Можно сразу присоединить сокет к комнате
+        socket.join(presentationId);
+        currentPresentationId = presentationId;
+        await emitUserList(io, presentationId);
         return;
       }
 
-      const session = await prisma.userSession.create({
+      // Создаём новую сессию с ролью VIEWER
+      await prisma.userSession.create({
         data: {
           nickname,
           role: UserRoles.VIEWER,
@@ -38,7 +57,6 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
 
       socket.join(presentationId);
       currentPresentationId = presentationId;
-
       await emitUserList(io, presentationId);
     } catch (error: any) {
       socket.emit("join_error", error.message || "Join failed");
@@ -143,14 +161,21 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
   });
 
   socket.on("disconnect", async () => {
+    //// что то не то
     try {
-      await prisma.userSession.deleteMany({ where: { socketId: socket.id } });
+      const delay = 1000;
 
-      if (currentPresentationId) {
-        await emitUserList(io, currentPresentationId);
-      }
-
-      console.log(`Socket disconnected: ${socket.id}`);
+      setTimeout(async () => {
+        const stillConnected = await io.sockets.sockets.get(socket.id);
+        if (!stillConnected) {
+          await prisma.userSession.deleteMany({
+            where: { socketId: socket.id },
+          });
+          if (currentPresentationId) {
+            await emitUserList(io, currentPresentationId);
+          }
+        }
+      }, delay);
     } catch (error) {
       console.error("Error on disconnect cleanup:", error);
     }

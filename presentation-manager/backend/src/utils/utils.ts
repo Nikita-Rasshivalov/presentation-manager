@@ -1,4 +1,3 @@
-import { Server, Socket } from "socket.io";
 import { prisma } from "../prisma/prisma.ts";
 import { UserRoles } from "../types.ts";
 
@@ -12,14 +11,6 @@ export function isCreator(session: { role: string } | null) {
 
 export function isEditor(session: { role: string } | null) {
   return session && session.role !== UserRoles.VIEWER;
-}
-
-export async function emitUserList(io: Server, presentationId: string) {
-  const users = await prisma.userSession.findMany({
-    where: { presentationId },
-    select: { id: true, nickname: true, role: true },
-  });
-  io.to(presentationId).emit("user_list_update", users);
 }
 
 export function validateStringField(field: any, fieldName: string) {

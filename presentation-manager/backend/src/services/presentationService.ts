@@ -1,5 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { prisma } from "../prisma/prisma.ts";
+import { UserRoles } from "../types.ts";
+import { v4 as uuidv4 } from "uuid";
 
 export class PresentationService {
   async getAll() {
@@ -10,12 +12,16 @@ export class PresentationService {
   }
 
   async create(title: string, nickname: string) {
-    const presentation = await prisma.presentation.create({ data: { title } });
+    const presentation = await prisma.presentation.create({
+      data: { title },
+    });
+    const socketId = uuidv4();
     const session = await prisma.userSession.create({
       data: {
         nickname,
-        role: UserRole.CREATOR,
+        role: UserRoles.CREATOR,
         presentationId: presentation.id,
+        socketId: socketId,
       },
     });
     return { presentation, session };
@@ -34,9 +40,28 @@ export class PresentationService {
     });
   }
 
-  async join(presentationId: string, nickname: string) {
+  async join(presentationId: string, nickname: string, socketId: string) {
+    const existingSession = await prisma.userSession.findFirst({
+      where: { presentationId, nickname },
+    });
+
+    if (existingSession) {
+      if (existingSession.socketId !== socketId) {
+        await prisma.userSession.update({
+          where: { id: existingSession.id },
+          data: { socketId },
+        });
+      }
+      return existingSession;
+    }
+
     return prisma.userSession.create({
-      data: { nickname, presentationId, role: UserRole.VIEWER },
+      data: {
+        nickname,
+        presentationId,
+        role: UserRole.VIEWER,
+        socketId,
+      },
     });
   }
 
@@ -62,7 +87,6 @@ export class PresentationService {
     });
     return session?.role ?? null;
   }
-
   async getSlides(presentationId: string) {
     return prisma.slide.findMany({
       where: { presentationId },
