@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import ReactMarkdown from "react-markdown";
 import { usePresentationStore } from "../../store/usePresentationStore";
 import { useSlideActions } from "../../hooks/useSlideActions";
 import { Slide, UserRole, Presentation } from "../../types/types";
@@ -9,6 +8,7 @@ import { EyeIcon } from "@heroicons/react/24/outline";
 import { SlideList } from "../SlideList";
 import { SlideView } from "../SlideView";
 import { UserList } from "../UserList";
+import { PresentationModeView } from "./PresentationModeView";
 
 interface PresentationViewProps {
   presentation: Presentation;
@@ -93,36 +93,8 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
 
   const togglePresentMode = () => setPresentMode((prev) => !prev);
 
-  if (!slide) {
-    return (
-      <section className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-4xl mx-auto mt-12 border border-gray-200 text-center text-gray-600 text-lg font-medium">
-        Slide not found
-      </section>
-    );
-  }
-
   if (presentMode) {
-    return (
-      <div className="fixed inset-0 bg-black text-white flex flex-col items-center justify-center relative font-sans">
-        {slide.elements.map((el: any) => (
-          <div
-            key={el.id}
-            style={{ left: el.x, top: el.y, maxWidth: 600 }}
-            className="absolute p-1.5 bg-white bg-opacity-10 rounded-lg shadow-lg select-none break-words text-3xl font-light leading-snug"
-          >
-            <ReactMarkdown>{el.content}</ReactMarkdown>
-          </div>
-        ))}
-
-        <button
-          onClick={togglePresentMode}
-          aria-label="Exit presentation mode"
-          className="absolute top-6 right-6 bg-white text-black px-6 py-3 rounded-lg shadow-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-        >
-          Exit Presentation
-        </button>
-      </div>
-    );
+    return <PresentationModeView slide={slide} onExit={togglePresentMode} />;
   }
 
   return (
@@ -135,7 +107,6 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         onAddSlide={handleAddSlide}
         onRemoveSlide={handleRemoveSlide}
       />
-
       <main className="flex-1 rounded-lg border border-gray-300 bg-white shadow-inner overflow-auto relative">
         <SlideView
           slideElements={slide.elements}
