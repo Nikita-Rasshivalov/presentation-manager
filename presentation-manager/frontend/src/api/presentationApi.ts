@@ -51,7 +51,9 @@ export const removeSlide = async (
   slideId: string,
   nickname: string
 ): Promise<void> => {
-  await axiosInstance.delete(`/api/presentations/slides/${slideId}`, {
-    params: { nickname },
+  await axiosInstance.request({
+    method: "delete",
+    url: `/api/presentations/slides/${slideId}`,
+    data: { nickname },
   });
 };

@@ -75,7 +75,8 @@ export class PresentationController {
 
   removeSlide = async (req: Request, res: Response) => {
     try {
-      const { slideId, nickname } = req.params;
+      const { slideId } = req.params;
+      const { nickname } = req.body;
 
       const slide = await this.presentationService.getSlideByIdRaw(slideId);
       if (!slide) {
