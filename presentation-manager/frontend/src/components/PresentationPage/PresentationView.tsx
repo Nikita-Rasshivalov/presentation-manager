@@ -1,14 +1,14 @@
-import React, { useState } from "react"; //меняем
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { SlideList } from "../../components/SlideList";
-import { SlideView } from "../../components/SlideView";
-import { UserList } from "../../components/UserList";
 import { usePresentationStore } from "../../store/usePresentationStore";
 import { useSlideActions } from "../../hooks/useSlideActions";
 import { Slide, UserRole, Presentation } from "../../types/types";
 import { addSlide, removeSlide } from "../../api/presentationApi";
 import { toast } from "react-toastify";
 import { EyeIcon } from "@heroicons/react/24/outline";
+import { SlideList } from "../SlideList";
+import { SlideView } from "../SlideView";
+import { UserList } from "../UserList";
 
 interface PresentationViewProps {
   presentation: Presentation;
@@ -140,7 +140,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
           className="absolute bottom-4 right-4 bg-purple-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 transition flex items-center gap-2"
         >
           <EyeIcon className="h-5 w-5" />
-          Present
+          Presentation
         </button>
       </main>
 
