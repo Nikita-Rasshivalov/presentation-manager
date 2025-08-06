@@ -77,6 +77,17 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
 
   const changeUserRole = (userId: string, newRole: UserRole) => {
     if (role !== UserRole.CREATOR) return;
+
+    const updatedUsers = presentation.users.map((user) =>
+      user.id === userId ? { ...user, role: newRole } : user
+    );
+
+    const updatedPresentation = {
+      ...presentation,
+      users: updatedUsers,
+    };
+
+    setPresentation(updatedPresentation);
     emitChangeUserRole(userId, newRole);
   };
 

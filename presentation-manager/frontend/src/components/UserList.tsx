@@ -31,7 +31,7 @@ export const UserList: React.FC<UserListProps> = ({
         ) : (
           users.map((user) => {
             const isDisabled =
-              currentUserRole !== "CREATOR" ||
+              currentUserRole !== UserRole.CREATOR ||
               user.nickname === currentUserNickname;
 
             return (

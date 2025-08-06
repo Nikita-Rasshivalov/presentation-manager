@@ -35,9 +35,12 @@ export const usePresentationStore = create<PresentationState>((set) => ({
     set((state) => {
       if (!state.presentation) return state;
       const currentUsers = state.presentation.users || [];
+
       const isSameUsers =
         currentUsers.length === users.length &&
-        currentUsers.every((u, i) => u.id === users[i].id);
+        currentUsers.every(
+          (u, i) => u.id === users[i].id && u.role === users[i].role
+        );
 
       if (isSameUsers) {
         return state;
