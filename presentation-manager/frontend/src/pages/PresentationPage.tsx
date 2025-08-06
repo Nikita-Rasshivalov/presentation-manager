@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { usePresentationStore } from "../store/usePresentationStore";
 import { useLoadPresentation } from "../hooks/useLoadPresentation";

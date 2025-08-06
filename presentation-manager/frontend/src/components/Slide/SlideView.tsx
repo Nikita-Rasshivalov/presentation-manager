@@ -22,8 +22,15 @@ export const SlideView: React.FC<SlideViewProps> = ({
   const [elements, setElements] = useState<SlideElement[]>(slideElements);
 
   useEffect(() => {
-    setElements(slideElements);
-  }, [slideElements]);
+    // Сравниваем массивы по длине и id элементов, чтобы обновлять стейт только если данные реально изменились
+    const areArraysEqual =
+      elements.length === slideElements.length &&
+      elements.every((el, i) => el.id === slideElements[i].id);
+
+    if (!areArraysEqual) {
+      setElements(slideElements);
+    }
+  }, [slideElements, elements]);
 
   const handleDragStart = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,

@@ -63,36 +63,24 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
   socket.on(
     "add_element",
     async ({ slideId, content, pos, size }, callback) => {
-      try {
-        validateStringField(slideId, "slideId");
-        validateStringField(content, "content");
-        validatePosition(pos);
-        validateSize(size);
-        console.log("aaa");
+      const session = await getSession(socket.id);
+      if (!isEditor(session)) return;
 
-        const session = await getSession(socket.id);
-        if (!isEditor(session)) return;
+      const element = await prisma.slideElement.create({
+        data: {
+          slideId,
+          content,
+          posX: pos.x,
+          posY: pos.y,
+          width: size.width,
+          height: size.height,
+        },
+      });
 
-        const element = await prisma.slideElement.create({
-          data: {
-            slideId,
-            content,
-            posX: pos.x,
-            posY: pos.y,
-            width: size.width,
-            height: size.height,
-          },
-        });
+      if (!session?.presentationId) return;
+      io.to(session.presentationId).emit("element_added", element);
 
-        console.log(element);
-
-        if (!session?.presentationId) return;
-        io.to(session.presentationId).emit("element_added", element);
-        callback?.({ element });
-      } catch (error: any) {
-        socket.emit("error", error.message || "Add element failed");
-        callback?.({ error: error.message });
-      }
+      callback?.({ element });
     }
   );
 

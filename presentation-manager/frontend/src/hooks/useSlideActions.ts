@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import { Slide, SlideElement, UserRole } from "../types/types";
 
@@ -8,6 +8,14 @@ export function useSlideActions(
   socket: Socket | null,
   updateSlideElements: (slideId: string, elements: SlideElement[]) => void
 ) {
+  const [elements, setElements] = useState<SlideElement[]>(
+    slide?.elements || []
+  );
+
+  useEffect(() => {
+    setElements(slide?.elements || []);
+  }, [slide?.elements]);
+
   const onUpdateContent = async (
     elementId: string,
     content: string
@@ -15,9 +23,10 @@ export function useSlideActions(
     if (!slide || !role || !socket) return;
     if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
 
-    const newElements = slide.elements.map((el) =>
+    const newElements = elements.map((el) =>
       el.id === elementId ? { ...el, content } : el
     );
+    setElements(newElements);
     updateSlideElements(slide.id, newElements);
 
     const updatedElement = newElements.find((el) => el.id === elementId);
@@ -26,7 +35,10 @@ export function useSlideActions(
     socket.emit("edit_element", {
       elementId: updatedElement.id,
       content: updatedElement.content,
-      pos: { x: updatedElement.x, y: updatedElement.y },
+      pos: {
+        x: (updatedElement.x ?? updatedElement.x) || 0,
+        y: (updatedElement.y ?? updatedElement.y) || 0,
+      },
     });
   };
 
@@ -38,9 +50,10 @@ export function useSlideActions(
     if (!slide || !role || !socket) return;
     if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
 
-    const newElements = slide.elements.map((el) =>
-      el.id === elementId ? { ...el, x, y } : el
+    const newElements = elements.map((el) =>
+      el.id === elementId ? { ...el, posX: x, posY: y, x, y } : el
     );
+    setElements(newElements);
     updateSlideElements(slide.id, newElements);
 
     const updatedElement = newElements.find((el) => el.id === elementId);
@@ -49,7 +62,7 @@ export function useSlideActions(
     socket.emit("edit_element", {
       elementId: updatedElement.id,
       content: updatedElement.content,
-      pos: { x: updatedElement.x, y: updatedElement.y },
+      pos: { x, y },
     });
   };
 
@@ -57,21 +70,11 @@ export function useSlideActions(
     if (!slide || !role || !socket) return;
     if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
 
-    const newElement: SlideElement = {
-      id: `el_${Date.now()}`,
-      type: "text",
-      x: 20,
-      y: 20,
-      content: "",
-    };
-
-    const newElements = [...(slide.elements || []), newElement];
-    updateSlideElements(slide.id, newElements);
-
+    console.log("emit add_element");
     socket.emit("add_element", {
       slideId: slide.id,
-      content: newElement.content,
-      pos: { x: newElement.x, y: newElement.y },
+      content: "",
+      pos: { x: 20, y: 20 },
       size: { width: 200, height: 100 },
     });
   };
@@ -80,7 +83,8 @@ export function useSlideActions(
     if (!slide || !role || !socket) return;
     if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
 
-    const newElements = slide.elements.filter((el) => el.id !== elementId);
+    const newElements = elements.filter((el) => el.id !== elementId);
+    setElements(newElements);
     updateSlideElements(slide.id, newElements);
 
     socket.emit("delete_element", {
@@ -93,21 +97,30 @@ export function useSlideActions(
     if (!socket || !slide) return;
 
     const handleElementAdded = (element: SlideElement) => {
-      if (slide.elements.find((el) => el.id === element.id)) return;
-      const newElements = [...slide.elements, element];
-      updateSlideElements(slide.id, newElements);
+      setElements((prev) => {
+        if (prev.find((el) => el.id === element.id)) return prev;
+        const newElements = [...prev, element];
+        updateSlideElements(slide.id, newElements);
+        return newElements;
+      });
     };
 
     const handleElementUpdated = (element: SlideElement) => {
-      const newElements = slide.elements.map((el) =>
-        el.id === element.id ? element : el
-      );
-      updateSlideElements(slide.id, newElements);
+      setElements((prev) => {
+        const newElements = prev.map((el) =>
+          el.id === element.id ? element : el
+        );
+        updateSlideElements(slide.id, newElements);
+        return newElements;
+      });
     };
 
     const handleElementDeleted = ({ elementId }: { elementId: string }) => {
-      const newElements = slide.elements.filter((el) => el.id !== elementId);
-      updateSlideElements(slide.id, newElements);
+      setElements((prev) => {
+        const newElements = prev.filter((el) => el.id !== elementId);
+        updateSlideElements(slide.id, newElements);
+        return newElements;
+      });
     };
 
     socket.on("element_added", handleElementAdded);
@@ -119,7 +132,7 @@ export function useSlideActions(
       socket.off("element_updated", handleElementUpdated);
       socket.off("element_deleted", handleElementDeleted);
     };
-  }, [socket, slide, updateSlideElements]);
+  }, [socket, slide?.id, updateSlideElements, slide]);
 
   return {
     onUpdateContent,

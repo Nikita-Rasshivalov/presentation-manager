@@ -1,7 +1,6 @@
-import React, { useState } from "react";
-import { usePresentationStore } from "../../store/usePresentationStore";
+import React, { useState, useEffect } from "react";
 import { useSlideActions } from "../../hooks/useSlideActions";
-import { Slide, UserRole, Presentation } from "../../types/types";
+import { UserRole, Presentation } from "../../types/types";
 import { addSlide, removeSlide } from "../../api/presentationApi";
 import { toast } from "react-toastify";
 import { EyeIcon } from "@heroicons/react/24/outline";
@@ -31,23 +30,32 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   emitChangeUserRole,
   socket,
 }) => {
-  const {
-    currentSlideIndex,
-    setCurrentSlideIndex,
-    updateSlideElements,
-    updateSlides,
-  } = usePresentationStore();
-
+  // Локальное состояние текущего слайда (чтобы не менять Zustand внутри рендера другого компонента)
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [presentMode, setPresentMode] = useState(false);
   const [addingSlide, setAddingSlide] = useState(false);
   const [removingSlide, setRemovingSlide] = useState(false);
 
+  useEffect(() => {
+    // Если слайды изменились, гарантируем валидный индекс текущего слайда
+    setCurrentSlideIndex((idx) =>
+      Math.min(idx, presentation.slides.length - 1)
+    );
+  }, [presentation.slides.length]);
+
   const slides = presentation.slides;
-  const safeIndex = Math.min(currentSlideIndex, slides.length - 1);
-  const slide = slides[safeIndex];
+  const slide = slides[currentSlideIndex];
 
   const { onUpdateContent, onUpdatePosition, addTextBlock, onDeleteElement } =
-    useSlideActions(slide, role, socket, updateSlideElements);
+    useSlideActions(slide, role, socket, (slideId, elements) => {
+      // Обновляем элементы слайда через setPresentation
+      const updatedSlides = presentation.slides.map((s) =>
+        s.id === slideId ? { ...s, elements } : s
+      );
+      const updatedPresentation = { ...presentation, slides: updatedSlides };
+      setPresentation(updatedPresentation);
+      emitPresentationUpdate(updatedPresentation);
+    });
 
   const handleAddSlide = async () => {
     if (role !== UserRole.CREATOR || addingSlide) return;
@@ -59,10 +67,9 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         nickname
       );
       const updatedSlides = [...presentation.slides, newSlide];
-      updateSlides(updatedSlides);
-      setCurrentSlideIndex(updatedSlides.length - 1);
       const updatedPresentation = { ...presentation, slides: updatedSlides };
       setPresentation(updatedPresentation);
+      setCurrentSlideIndex(updatedSlides.length - 1);
       emitPresentationUpdate(updatedPresentation);
     } catch {
       toast.warn("Failed to add slide");
@@ -76,17 +83,14 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
     setRemovingSlide(true);
     try {
       await removeSlide(slideId, nickname);
-      const newSlides = presentation.slides.filter(
-        (s: Slide) => s.id !== slideId
-      );
-      updateSlides(newSlides);
-      const newIndex =
-        newSlides.length === 0
-          ? 0
-          : Math.min(currentSlideIndex, newSlides.length - 1);
-      setCurrentSlideIndex(newIndex);
+      const newSlides = presentation.slides.filter((s) => s.id !== slideId);
       const updatedPresentation = { ...presentation, slides: newSlides };
       setPresentation(updatedPresentation);
+
+      setCurrentSlideIndex((idx) =>
+        newSlides.length === 0 ? 0 : Math.min(idx, newSlides.length - 1)
+      );
+
       emitPresentationUpdate(updatedPresentation);
     } catch {
       toast.error("Failed to remove slide");
