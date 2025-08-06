@@ -17,8 +17,8 @@ export interface User {
 export interface SlideElement {
   id: string;
   type: "text";
-  x: number;
-  y: number;
+  posX: number;
+  posY: number;
   content: string;
 }
 

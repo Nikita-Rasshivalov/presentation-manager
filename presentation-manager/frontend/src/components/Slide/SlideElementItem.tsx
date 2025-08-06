@@ -80,8 +80,8 @@ export const SlideElementItem: React.FC<SlideElementItemProps> = ({
       ref={containerRef}
       style={{
         position: "absolute",
-        left: typeof el.x === "number" ? el.x : 0,
-        top: typeof el.y === "number" ? el.y : 0,
+        left: typeof el.posX === "number" ? el.posX : 0,
+        top: typeof el.posY === "number" ? el.posY : 0,
         maxWidth: 600,
         cursor: draggable && !isEditing && !isViewer ? "grab" : "default",
         backgroundColor: "#f9fafb",
@@ -148,7 +148,7 @@ export const SlideElementItem: React.FC<SlideElementItemProps> = ({
         <div style={{ cursor: isViewer ? "default" : "pointer" }}>
           <MDEditor.Markdown source={el.content} />
           {!isViewer && (
-            <small className="text-gray-500">Double-click to edit</small>
+            <small className="text-gray-500">...Double-click to edit</small>
           )}
         </div>
       )}

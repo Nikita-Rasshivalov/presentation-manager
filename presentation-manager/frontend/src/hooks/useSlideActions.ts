@@ -85,7 +85,7 @@ export function useSlideActions(
       const element = elementsRef.current.find((el) => el.id === id);
       if (!element) return;
 
-      editElement(id, content, { x: element.x, y: element.y });
+      editElement(id, content, { x: element.posX, y: element.posY });
     },
     [slide, role, editElement]
   );
@@ -115,7 +115,7 @@ export function useSlideActions(
     )
       return;
 
-    addElement("...", { x: 50, y: 50 }, { width: 200, height: 100 });
+    addElement("", { x: 50, y: 50 }, { width: 200, height: 100 });
   }, [slide, role, addElement]);
 
   const onDeleteElement = useCallback(

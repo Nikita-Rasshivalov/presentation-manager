@@ -25,8 +25,8 @@ export const SlideView: React.FC<SlideViewProps> = ({
   ) => {
     const startX = e.clientX;
     const startY = e.clientY;
-    const initialX = el.x ?? 0;
-    const initialY = el.y ?? 0;
+    const initialX = el.posX ?? 0;
+    const initialY = el.posY ?? 0;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
@@ -37,7 +37,6 @@ export const SlideView: React.FC<SlideViewProps> = ({
 
       onUpdatePosition(el.id, newX, newY);
     };
-
     const handleMouseUp = () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
