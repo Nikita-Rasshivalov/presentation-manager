@@ -41,11 +41,9 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
     );
   }, [presentation.slides.length]);
 
-  // Копируем ссылки, чтобы избежать лишних рендеров
   const slides = presentation.slides;
   const slide = slides[currentSlideIndex] || null;
 
-  // Функция обновления элементов слайда с мемоизацией (useCallback)
   const updateSlideElements = useCallback(
     (slideId: string, elements: SlideElement[]) => {
       const updatedSlides = presentation.slides.map((s) =>
@@ -58,7 +56,6 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
     [presentation, setPresentation, emitPresentationUpdate]
   );
 
-  // Хук для работы с элементами слайда
   const { onUpdateContent, onUpdatePosition, addTextBlock, onDeleteElement } =
     useSlideActions(slide, role, socket, updateSlideElements);
 
@@ -114,7 +111,6 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
 
   const togglePresentMode = () => setPresentMode((prev) => !prev);
 
-  // Подписка на сокет-события для обновления презентации целиком (слайды, пользователи)
   useEffect(() => {
     if (!socket) return;
 
@@ -130,7 +126,12 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   }, [socket, setPresentation]);
 
   if (presentMode) {
-    return <PresentationModeView slide={slide} onExit={togglePresentMode} />;
+    return (
+      <PresentationModeView
+        slides={presentation.slides}
+        onExit={togglePresentMode}
+      />
+    );
   }
 
   return (
