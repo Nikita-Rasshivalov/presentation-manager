@@ -31,21 +31,18 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
       });
 
       if (existingSession) {
-        // Обновляем socketId, если нужно
         if (existingSession.socketId !== socket.id) {
           await prisma.userSession.update({
             where: { id: existingSession.id },
             data: { socketId: socket.id },
           });
         }
-        // Можно сразу присоединить сокет к комнате
         socket.join(presentationId);
         currentPresentationId = presentationId;
         await emitUserList(io, presentationId);
         return;
       }
 
-      // Создаём новую сессию с ролью VIEWER
       await prisma.userSession.create({
         data: {
           nickname,
@@ -127,6 +124,20 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
       io.to(session.presentationId).emit("element_deleted", { elementId });
     } catch (error: any) {
       socket.emit("error", error.message || "Delete element failed");
+    }
+  });
+
+  socket.on("presentationUpdate", async (data) => {
+    try {
+      const session = await getSession(socket.id);
+      if (!isCreator(session)) return;
+
+      const presentationId = data?.id;
+      validateStringField(presentationId, "presentationId");
+
+      socket.to(presentationId).emit("presentationUpdate", data);
+    } catch (error: any) {
+      socket.emit("error", error.message || "Presentation update failed");
     }
   });
 

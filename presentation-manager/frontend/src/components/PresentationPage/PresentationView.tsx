@@ -28,11 +28,20 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   emitPresentationUpdate,
   emitChangeUserRole,
 }) => {
-  const { currentSlideIndex, setCurrentSlideIndex, updateSlideElements } =
-    usePresentationStore();
+  const {
+    currentSlideIndex,
+    setCurrentSlideIndex,
+    updateSlideElements,
+    updateSlides,
+  } = usePresentationStore();
 
   const [presentMode, setPresentMode] = useState(false);
-  const slide = presentation.slides[currentSlideIndex];
+  const [addingSlide, setAddingSlide] = useState(false);
+  const [removingSlide, setRemovingSlide] = useState(false);
+
+  const slides = presentation.slides;
+  const safeIndex = Math.min(currentSlideIndex, slides.length - 1);
+  const slide = slides[safeIndex];
 
   const { onUpdateContent, onUpdatePosition, addTextBlock } = useSlideActions(
     slide,
@@ -43,6 +52,8 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
 
   const handleAddSlide = async () => {
     if (role !== UserRole.CREATOR) return;
+    if (addingSlide) return;
+    setAddingSlide(true);
     try {
       const newSlide = await addSlide(
         presentation.id,
@@ -50,43 +61,53 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         nickname
       );
       const updatedSlides = [...presentation.slides, newSlide];
+      updateSlides(updatedSlides);
+      setCurrentSlideIndex(updatedSlides.length - 1);
       const updatedPresentation = { ...presentation, slides: updatedSlides };
       setPresentation(updatedPresentation);
-      setCurrentSlideIndex(updatedSlides.length - 1);
       emitPresentationUpdate(updatedPresentation);
     } catch {
       toast.warn("Failed to add slide");
+    } finally {
+      setAddingSlide(false);
     }
   };
 
   const handleRemoveSlide = async (slideId: string) => {
     if (role !== UserRole.CREATOR) return;
+    if (removingSlide) return;
+    setRemovingSlide(true);
     try {
       await removeSlide(slideId, nickname);
       const newSlides = presentation.slides.filter(
         (s: Slide) => s.id !== slideId
       );
+      updateSlides(newSlides);
+      const currentIndex = currentSlideIndex;
+      const newIndex =
+        newSlides.length === 0
+          ? 0
+          : Math.min(currentIndex, newSlides.length - 1);
+      setCurrentSlideIndex(newIndex);
       const updatedPresentation = { ...presentation, slides: newSlides };
       setPresentation(updatedPresentation);
-      setCurrentSlideIndex(Math.min(currentSlideIndex, newSlides.length - 1));
       emitPresentationUpdate(updatedPresentation);
     } catch {
       toast.error("Failed to remove slide");
+    } finally {
+      setRemovingSlide(false);
     }
   };
 
   const changeUserRole = (userId: string, newRole: UserRole) => {
     if (role !== UserRole.CREATOR) return;
-
     const updatedUsers = presentation.users.map((user) =>
       user.id === userId ? { ...user, role: newRole } : user
     );
-
     const updatedPresentation = {
       ...presentation,
       users: updatedUsers,
     };
-
     setPresentation(updatedPresentation);
     emitChangeUserRole(userId, newRole);
   };
@@ -106,16 +127,23 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         onSelectSlide={setCurrentSlideIndex}
         onAddSlide={handleAddSlide}
         onRemoveSlide={handleRemoveSlide}
+        addingSlide={addingSlide}
+        removingSlide={removingSlide}
       />
       <main className="flex-1 rounded-lg border border-gray-300 bg-white shadow-inner overflow-auto relative">
-        <SlideView
-          slideElements={slide.elements}
-          role={role}
-          onUpdateContent={onUpdateContent}
-          onUpdatePosition={onUpdatePosition}
-          onAddTextBlock={addTextBlock}
-        />
-
+        {slide ? (
+          <SlideView
+            slideElements={slide.elements}
+            role={role}
+            onUpdateContent={onUpdateContent}
+            onUpdatePosition={onUpdatePosition}
+            onAddTextBlock={addTextBlock}
+          />
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            No slide selected
+          </div>
+        )}
         <button
           onClick={togglePresentMode}
           aria-label="Enter presentation mode"
@@ -125,7 +153,6 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
           Presentation
         </button>
       </main>
-
       <aside className="w-1/4 rounded-lg border border-gray-300 bg-white p-4 shadow-md flex flex-col">
         <UserList
           users={presentation.users}

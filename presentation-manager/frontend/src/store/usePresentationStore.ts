@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Presentation, UserRole } from "../types/types";
+import { Presentation, Slide, UserRole } from "../types/types";
 
 interface PresentationState {
   presentation: Presentation | null;
@@ -12,6 +12,7 @@ interface PresentationState {
   setRole: (role: UserRole) => void;
   updateSlideElements: (slideId: string, elements: any[]) => void;
   updateUsers: (users: any[]) => void;
+  updateSlides: (slides: Slide[]) => void;
 }
 
 export const usePresentationStore = create<PresentationState>((set) => ({
@@ -50,6 +51,16 @@ export const usePresentationStore = create<PresentationState>((set) => ({
         presentation: {
           ...state.presentation,
           users: [...users],
+        },
+      };
+    }),
+  updateSlides: (slides) =>
+    set((state) => {
+      if (!state.presentation) return state;
+      return {
+        presentation: {
+          ...state.presentation,
+          slides: [...slides],
         },
       };
     }),

@@ -8,6 +8,8 @@ interface SlideListProps {
   onSelectSlide: (index: number) => void;
   onAddSlide: () => void;
   onRemoveSlide: (slideId: string) => void;
+  addingSlide?: boolean;
+  removingSlide?: boolean;
 }
 
 export const SlideList: React.FC<SlideListProps> = ({
@@ -17,6 +19,8 @@ export const SlideList: React.FC<SlideListProps> = ({
   onSelectSlide,
   onAddSlide,
   onRemoveSlide,
+  addingSlide = false,
+  removingSlide = false,
 }) => {
   return (
     <aside className="w-1/4 rounded-lg border border-gray-300 bg-gray-50 flex flex-col">
@@ -26,7 +30,12 @@ export const SlideList: React.FC<SlideListProps> = ({
           <button
             onClick={onAddSlide}
             title="Add slide"
-            className="p-1 rounded hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-400"
+            disabled={addingSlide || removingSlide}
+            className={`p-1 rounded hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-400 ${
+              addingSlide || removingSlide
+                ? "opacity-50 cursor-not-allowed"
+                : ""
+            }`}
           >
             <PlusIcon className="h-6 w-6 text-green-600" />
           </button>
@@ -53,10 +62,17 @@ export const SlideList: React.FC<SlideListProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onRemoveSlide(slide.id);
+                  if (!removingSlide && !addingSlide) {
+                    onRemoveSlide(slide.id);
+                  }
                 }}
                 title="Remove slide"
-                className="p-1 rounded hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400"
+                disabled={removingSlide || addingSlide}
+                className={`p-1 rounded hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 ${
+                  removingSlide || addingSlide
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
               >
                 <TrashIcon className="h-5 w-5 text-red-600" />
               </button>
