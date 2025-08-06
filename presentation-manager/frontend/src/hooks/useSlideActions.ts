@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useCallback } from "react";
 import { Socket } from "socket.io-client";
 import { Slide, UserRole, SlideElement, Presentation } from "../types/types";
-
 export function useSlideActions(
   slide: Slide | null | undefined,
   role: UserRole | null | undefined,
@@ -33,59 +32,105 @@ export function useSlideActions(
     [slide, updateSlideElements, emitPresentationUpdate, presentation]
   );
 
-  const onUpdateContent = (id: string, content: string) => {
-    if (
-      !slide ||
-      !role ||
-      (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
-    )
-      return;
-    const updatedElements = elementsRef.current.map((el) =>
-      el.id === id ? { ...el, content } : el
-    );
-    updateElements(updatedElements);
-  };
+  const addElement = useCallback(
+    (
+      content: string,
+      pos: { x: number; y: number },
+      size: { width: number; height: number },
+      callback?: (response: any) => void
+    ) => {
+      if (!socket || !slide || !role) return;
+      if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
 
-  const onUpdatePosition = (id: string, x: number, y: number) => {
-    if (
-      !slide ||
-      !role ||
-      (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
-    )
-      return;
-    const updatedElements = elementsRef.current.map((el) =>
-      el.id === id ? { ...el, x, y } : el
-    );
-    updateElements(updatedElements);
-  };
+      socket.emit(
+        "add_element",
+        { slideId: slide.id, content, pos, size },
+        (response: any) => {
+          if (callback) callback(response);
+        }
+      );
+    },
+    [socket, slide, role]
+  );
 
-  const addTextBlock = () => {
-    if (
-      !slide ||
-      !role ||
-      (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
-    )
-      return;
-    const newElement: SlideElement = {
-      id: `${Date.now()}`,
-      type: "text",
-      content: "New text",
-      x: 50,
-      y: 50,
-    };
-    updateElements([...elementsRef.current, newElement]);
-  };
+  const editElement = useCallback(
+    (elementId: string, content: string, pos: { x: number; y: number }) => {
+      if (!socket || !role) return;
+      if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
 
-  const onDeleteElement = (id: string) => {
+      socket.emit("edit_element", { elementId, content, pos });
+    },
+    [socket, role]
+  );
+
+  const deleteElement = useCallback(
+    (elementId: string) => {
+      if (!socket || !role) return;
+      if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
+
+      socket.emit("delete_element", { elementId });
+    },
+    [socket, role]
+  );
+
+  const onUpdateContent = useCallback(
+    (id: string, content: string) => {
+      if (
+        !slide ||
+        !role ||
+        (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
+      )
+        return;
+
+      const element = elementsRef.current.find((el) => el.id === id);
+      if (!element) return;
+
+      editElement(id, content, { x: element.x, y: element.y });
+    },
+    [slide, role, editElement]
+  );
+
+  const onUpdatePosition = useCallback(
+    (id: string, x: number, y: number) => {
+      if (
+        !slide ||
+        !role ||
+        (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
+      )
+        return;
+
+      const element = elementsRef.current.find((el) => el.id === id);
+      if (!element) return;
+
+      editElement(id, element.content, { x, y });
+    },
+    [slide, role, editElement]
+  );
+
+  const addTextBlock = useCallback(() => {
     if (
       !slide ||
       !role ||
       (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
     )
       return;
-    const updatedElements = elementsRef.current.filter((el) => el.id !== id);
-    updateElements(updatedElements);
-  };
+
+    addElement("...", { x: 50, y: 50 }, { width: 200, height: 100 });
+  }, [slide, role, addElement]);
+
+  const onDeleteElement = useCallback(
+    (id: string) => {
+      if (
+        !slide ||
+        !role ||
+        (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
+      )
+        return;
+
+      deleteElement(id);
+    },
+    [slide, role, deleteElement]
+  );
 
   useEffect(() => {
     if (!socket || !slide) return;

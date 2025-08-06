@@ -134,7 +134,7 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
     }
   });
 
-  socket.on("presentationUpdate", async (data) => {
+  socket.on("presentation_updated", async (data) => {
     try {
       const session = await getSession(socket.id);
       if (!isCreator(session)) return;
@@ -142,7 +142,7 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
       const presentationId = data?.id;
       validateStringField(presentationId, "presentationId");
 
-      socket.to(presentationId).emit("presentationUpdate", data);
+      socket.to(presentationId).emit("presentation_updated", data);
     } catch (error: any) {
       socket.emit("error", error.message || "Presentation update failed");
     }
