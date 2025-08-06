@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Presentation, Slide, UserRole } from "../types/types";
+import { Presentation, Slide, UserRole, SlideElement } from "../types/types";
 
 interface PresentationState {
   presentation: Presentation | null;
@@ -10,7 +10,7 @@ interface PresentationState {
   setCurrentSlideIndex: (index: number) => void;
   setNickname: (nickname: string) => void;
   setRole: (role: UserRole) => void;
-  updateSlideElements: (slideId: string, elements: any[]) => void;
+  updateSlideElements: (slideId: string, elements: SlideElement[]) => void;
   updateUsers: (users: any[]) => void;
   updateSlides: (slides: Slide[]) => void;
 }

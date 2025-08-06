@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSlideActions } from "../../hooks/useSlideActions";
-import { UserRole, Presentation } from "../../types/types";
+import { UserRole, Presentation, SlideElement } from "../../types/types";
 import { addSlide, removeSlide } from "../../api/presentationApi";
 import { toast } from "react-toastify";
 import { EyeIcon } from "@heroicons/react/24/outline";
@@ -30,32 +30,37 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   emitChangeUserRole,
   socket,
 }) => {
-  // Локальное состояние текущего слайда (чтобы не менять Zustand внутри рендера другого компонента)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [presentMode, setPresentMode] = useState(false);
   const [addingSlide, setAddingSlide] = useState(false);
   const [removingSlide, setRemovingSlide] = useState(false);
 
   useEffect(() => {
-    // Если слайды изменились, гарантируем валидный индекс текущего слайда
     setCurrentSlideIndex((idx) =>
       Math.min(idx, presentation.slides.length - 1)
     );
   }, [presentation.slides.length]);
 
+  // Копируем ссылки, чтобы избежать лишних рендеров
   const slides = presentation.slides;
-  const slide = slides[currentSlideIndex];
+  const slide = slides[currentSlideIndex] || null;
 
-  const { onUpdateContent, onUpdatePosition, addTextBlock, onDeleteElement } =
-    useSlideActions(slide, role, socket, (slideId, elements) => {
-      // Обновляем элементы слайда через setPresentation
+  // Функция обновления элементов слайда с мемоизацией (useCallback)
+  const updateSlideElements = useCallback(
+    (slideId: string, elements: SlideElement[]) => {
       const updatedSlides = presentation.slides.map((s) =>
         s.id === slideId ? { ...s, elements } : s
       );
       const updatedPresentation = { ...presentation, slides: updatedSlides };
       setPresentation(updatedPresentation);
       emitPresentationUpdate(updatedPresentation);
-    });
+    },
+    [presentation, setPresentation, emitPresentationUpdate]
+  );
+
+  // Хук для работы с элементами слайда
+  const { onUpdateContent, onUpdatePosition, addTextBlock, onDeleteElement } =
+    useSlideActions(slide, role, socket, updateSlideElements);
 
   const handleAddSlide = async () => {
     if (role !== UserRole.CREATOR || addingSlide) return;
@@ -86,11 +91,9 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
       const newSlides = presentation.slides.filter((s) => s.id !== slideId);
       const updatedPresentation = { ...presentation, slides: newSlides };
       setPresentation(updatedPresentation);
-
       setCurrentSlideIndex((idx) =>
         newSlides.length === 0 ? 0 : Math.min(idx, newSlides.length - 1)
       );
-
       emitPresentationUpdate(updatedPresentation);
     } catch {
       toast.error("Failed to remove slide");
@@ -110,6 +113,21 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   };
 
   const togglePresentMode = () => setPresentMode((prev) => !prev);
+
+  // Подписка на сокет-события для обновления презентации целиком (слайды, пользователи)
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePresentationUpdated = (updatedPresentation: Presentation) => {
+      setPresentation(updatedPresentation);
+    };
+
+    socket.on("presentation_updated", handlePresentationUpdated);
+
+    return () => {
+      socket.off("presentation_updated", handlePresentationUpdated);
+    };
+  }, [socket, setPresentation]);
 
   if (presentMode) {
     return <PresentationModeView slide={slide} onExit={togglePresentMode} />;

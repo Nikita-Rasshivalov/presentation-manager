@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { SlideElementItem } from "./SlideElementItem";
 import { SlideElement, UserRole } from "../../types/types";
 
@@ -19,31 +19,23 @@ export const SlideView: React.FC<SlideViewProps> = ({
   onAddTextBlock,
   onDeleteElement,
 }) => {
-  const [elements, setElements] = useState<SlideElement[]>(slideElements);
-
-  useEffect(() => {
-    // Сравниваем массивы по длине и id элементов, чтобы обновлять стейт только если данные реально изменились
-    const areArraysEqual =
-      elements.length === slideElements.length &&
-      elements.every((el, i) => el.id === slideElements[i].id);
-
-    if (!areArraysEqual) {
-      setElements(slideElements);
-    }
-  }, [slideElements, elements]);
-
   const handleDragStart = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
     el: SlideElement
   ) => {
     const startX = e.clientX;
     const startY = e.clientY;
+    const initialX = el.x ?? 0;
+    const initialY = el.y ?? 0;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
 
-      onUpdatePosition(el.id, el.x + deltaX, el.y + deltaY);
+      const newX = initialX + deltaX;
+      const newY = initialY + deltaY;
+
+      onUpdatePosition(el.id, newX, newY);
     };
 
     const handleMouseUp = () => {
@@ -56,8 +48,8 @@ export const SlideView: React.FC<SlideViewProps> = ({
   };
 
   return (
-    <div className="relative flex-1 p-6 bg-white rounded-2xl shadow-inner border border-gray-200 overflow-hidden select-none h-full">
-      {elements.map((el) => (
+    <div className="relative flex-1 p-6 bg-white rounded-2xl shadow-inner border border-gray-200 overflow-hidden h-full">
+      {slideElements.map((el) => (
         <SlideElementItem
           key={el.id}
           el={el}
@@ -65,6 +57,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
           onDragStart={handleDragStart}
           draggable={role === UserRole.CREATOR || role === UserRole.EDITOR}
           onDelete={onDeleteElement}
+          isViewer={role === UserRole.VIEWER}
         />
       ))}
 

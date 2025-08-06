@@ -1,138 +1,132 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useCallback } from "react";
 import { Socket } from "socket.io-client";
-import { Slide, SlideElement, UserRole } from "../types/types";
+import { Slide, UserRole, SlideElement, Presentation } from "../types/types";
 
 export function useSlideActions(
   slide: Slide | null | undefined,
   role: UserRole | null | undefined,
   socket: Socket | null,
-  updateSlideElements: (slideId: string, elements: SlideElement[]) => void
+  updateSlideElements: (slideId: string, elements: SlideElement[]) => void,
+  emitPresentationUpdate?: (presentation: Presentation) => void,
+  presentation?: Presentation
 ) {
-  const [elements, setElements] = useState<SlideElement[]>(
-    slide?.elements || []
+  const elements = useMemo(() => slide?.elements || [], [slide?.elements]);
+
+  const elementsRef = useRef<SlideElement[]>(elements);
+  useEffect(() => {
+    elementsRef.current = elements;
+  }, [elements]);
+
+  const updateElements = useCallback(
+    (newElements: SlideElement[]) => {
+      if (!slide) return;
+
+      updateSlideElements(slide.id, newElements);
+
+      if (emitPresentationUpdate && presentation) {
+        const updatedSlides = presentation.slides.map((s) =>
+          s.id === slide.id ? { ...s, elements: newElements } : s
+        );
+        emitPresentationUpdate({ ...presentation, slides: updatedSlides });
+      }
+    },
+    [slide, updateSlideElements, emitPresentationUpdate, presentation]
   );
 
-  useEffect(() => {
-    setElements(slide?.elements || []);
-  }, [slide?.elements]);
-
-  const onUpdateContent = async (
-    elementId: string,
-    content: string
-  ): Promise<void> => {
-    if (!slide || !role || !socket) return;
-    if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
-
-    const newElements = elements.map((el) =>
-      el.id === elementId ? { ...el, content } : el
+  const onUpdateContent = (id: string, content: string) => {
+    if (
+      !slide ||
+      !role ||
+      (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
+    )
+      return;
+    const updatedElements = elementsRef.current.map((el) =>
+      el.id === id ? { ...el, content } : el
     );
-    setElements(newElements);
-    updateSlideElements(slide.id, newElements);
-
-    const updatedElement = newElements.find((el) => el.id === elementId);
-    if (!updatedElement) return;
-
-    socket.emit("edit_element", {
-      elementId: updatedElement.id,
-      content: updatedElement.content,
-      pos: {
-        x: (updatedElement.x ?? updatedElement.x) || 0,
-        y: (updatedElement.y ?? updatedElement.y) || 0,
-      },
-    });
+    updateElements(updatedElements);
   };
 
-  const onUpdatePosition = async (
-    elementId: string,
-    x: number,
-    y: number
-  ): Promise<void> => {
-    if (!slide || !role || !socket) return;
-    if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
-
-    const newElements = elements.map((el) =>
-      el.id === elementId ? { ...el, posX: x, posY: y, x, y } : el
+  const onUpdatePosition = (id: string, x: number, y: number) => {
+    if (
+      !slide ||
+      !role ||
+      (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
+    )
+      return;
+    const updatedElements = elementsRef.current.map((el) =>
+      el.id === id ? { ...el, x, y } : el
     );
-    setElements(newElements);
-    updateSlideElements(slide.id, newElements);
-
-    const updatedElement = newElements.find((el) => el.id === elementId);
-    if (!updatedElement) return;
-
-    socket.emit("edit_element", {
-      elementId: updatedElement.id,
-      content: updatedElement.content,
-      pos: { x, y },
-    });
+    updateElements(updatedElements);
   };
 
-  const addTextBlock = async (): Promise<void> => {
-    if (!slide || !role || !socket) return;
-    if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
-
-    console.log("emit add_element");
-    socket.emit("add_element", {
-      slideId: slide.id,
-      content: "",
-      pos: { x: 20, y: 20 },
-      size: { width: 200, height: 100 },
-    });
+  const addTextBlock = () => {
+    if (
+      !slide ||
+      !role ||
+      (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
+    )
+      return;
+    const newElement: SlideElement = {
+      id: `${Date.now()}`,
+      type: "text",
+      content: "New text",
+      x: 50,
+      y: 50,
+    };
+    updateElements([...elementsRef.current, newElement]);
   };
 
-  const onDeleteElement = async (elementId: string): Promise<void> => {
-    if (!slide || !role || !socket) return;
-    if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
-
-    const newElements = elements.filter((el) => el.id !== elementId);
-    setElements(newElements);
-    updateSlideElements(slide.id, newElements);
-
-    socket.emit("delete_element", {
-      slideId: slide.id,
-      elementId,
-    });
+  const onDeleteElement = (id: string) => {
+    if (
+      !slide ||
+      !role ||
+      (role !== UserRole.CREATOR && role !== UserRole.EDITOR)
+    )
+      return;
+    const updatedElements = elementsRef.current.filter((el) => el.id !== id);
+    updateElements(updatedElements);
   };
 
   useEffect(() => {
     if (!socket || !slide) return;
 
+    const handleSlideUpdated = (updatedSlide: Slide) => {
+      if (updatedSlide.id === slide.id) {
+        updateElements(updatedSlide.elements || []);
+      }
+    };
+
     const handleElementAdded = (element: SlideElement) => {
-      setElements((prev) => {
-        if (prev.find((el) => el.id === element.id)) return prev;
-        const newElements = [...prev, element];
-        updateSlideElements(slide.id, newElements);
-        return newElements;
-      });
+      if (elementsRef.current.find((el) => el.id === element.id)) return;
+      updateElements([...elementsRef.current, element]);
     };
 
     const handleElementUpdated = (element: SlideElement) => {
-      setElements((prev) => {
-        const newElements = prev.map((el) =>
-          el.id === element.id ? element : el
-        );
-        updateSlideElements(slide.id, newElements);
-        return newElements;
-      });
+      const updatedElements = elementsRef.current.map((el) =>
+        el.id === element.id ? element : el
+      );
+      updateElements(updatedElements);
     };
 
     const handleElementDeleted = ({ elementId }: { elementId: string }) => {
-      setElements((prev) => {
-        const newElements = prev.filter((el) => el.id !== elementId);
-        updateSlideElements(slide.id, newElements);
-        return newElements;
-      });
+      const updatedElements = elementsRef.current.filter(
+        (el) => el.id !== elementId
+      );
+      updateElements(updatedElements);
     };
 
+    socket.on("slide_updated", handleSlideUpdated);
     socket.on("element_added", handleElementAdded);
     socket.on("element_updated", handleElementUpdated);
     socket.on("element_deleted", handleElementDeleted);
 
     return () => {
+      socket.off("slide_updated", handleSlideUpdated);
       socket.off("element_added", handleElementAdded);
       socket.off("element_updated", handleElementUpdated);
       socket.off("element_deleted", handleElementDeleted);
     };
-  }, [socket, slide?.id, updateSlideElements, slide]);
+  }, [socket, slide?.id, updateElements, slide]);
 
   return {
     onUpdateContent,
