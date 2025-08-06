@@ -1,5 +1,6 @@
 import React from "react";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { UserRole } from "../../types/types";
 
 interface SlideListProps {
   slides: any[];
@@ -26,7 +27,7 @@ export const SlideList: React.FC<SlideListProps> = ({
     <aside className="w-1/4 rounded-lg border border-gray-300 bg-gray-50 flex flex-col">
       <div className="p-4 font-semibold border-b flex justify-between items-center bg-gray-50">
         <span className="text-gray-700 tracking-wide">Slides</span>
-        {role === "CREATOR" && (
+        {role === UserRole.CREATOR && (
           <button
             onClick={onAddSlide}
             title="Add slide"
@@ -58,7 +59,7 @@ export const SlideList: React.FC<SlideListProps> = ({
             }`}
           >
             <span className="truncate">Slide {idx + 1}</span>
-            {role === "CREATOR" && (
+            {role === UserRole.CREATOR && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();

@@ -42,7 +42,7 @@ export const NoSlidesView: React.FC<NoSlidesViewProps> = ({
       <p className="mb-6 text-lg font-semibold text-gray-700 text-center">
         No slides yet.
       </p>
-      {role === "CREATOR" && (
+      {role !== UserRole.VIEWER && (
         <button
           onClick={handleAddFirstSlide}
           className="w-full py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"

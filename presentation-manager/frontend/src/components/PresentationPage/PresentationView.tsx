@@ -5,10 +5,11 @@ import { Slide, UserRole, Presentation } from "../../types/types";
 import { addSlide, removeSlide } from "../../api/presentationApi";
 import { toast } from "react-toastify";
 import { EyeIcon } from "@heroicons/react/24/outline";
-import { SlideList } from "../SlideList";
-import { SlideView } from "../SlideView";
+import { SlideList } from "../Slide/SlideList";
+import { SlideView } from "../Slide/SlideView";
 import { UserList } from "../UserList";
 import { PresentationModeView } from "./PresentationModeView";
+import { Socket } from "socket.io-client";
 
 interface PresentationViewProps {
   presentation: Presentation;
@@ -18,6 +19,7 @@ interface PresentationViewProps {
   nickname: string;
   emitPresentationUpdate: (presentation: Presentation) => void;
   emitChangeUserRole: (userId: string, newRole: UserRole) => void;
+  socket: Socket | null;
 }
 
 export const PresentationView: React.FC<PresentationViewProps> = ({
@@ -27,6 +29,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   nickname,
   emitPresentationUpdate,
   emitChangeUserRole,
+  socket,
 }) => {
   const {
     currentSlideIndex,
@@ -43,16 +46,11 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   const safeIndex = Math.min(currentSlideIndex, slides.length - 1);
   const slide = slides[safeIndex];
 
-  const { onUpdateContent, onUpdatePosition, addTextBlock } = useSlideActions(
-    slide,
-    role,
-    null,
-    updateSlideElements
-  );
+  const { onUpdateContent, onUpdatePosition, addTextBlock, onDeleteElement } =
+    useSlideActions(slide, role, socket, updateSlideElements);
 
   const handleAddSlide = async () => {
-    if (role !== UserRole.CREATOR) return;
-    if (addingSlide) return;
+    if (role !== UserRole.CREATOR || addingSlide) return;
     setAddingSlide(true);
     try {
       const newSlide = await addSlide(
@@ -74,8 +72,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
   };
 
   const handleRemoveSlide = async (slideId: string) => {
-    if (role !== UserRole.CREATOR) return;
-    if (removingSlide) return;
+    if (role !== UserRole.CREATOR || removingSlide) return;
     setRemovingSlide(true);
     try {
       await removeSlide(slideId, nickname);
@@ -83,11 +80,10 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         (s: Slide) => s.id !== slideId
       );
       updateSlides(newSlides);
-      const currentIndex = currentSlideIndex;
       const newIndex =
         newSlides.length === 0
           ? 0
-          : Math.min(currentIndex, newSlides.length - 1);
+          : Math.min(currentSlideIndex, newSlides.length - 1);
       setCurrentSlideIndex(newIndex);
       const updatedPresentation = { ...presentation, slides: newSlides };
       setPresentation(updatedPresentation);
@@ -104,10 +100,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
     const updatedUsers = presentation.users.map((user) =>
       user.id === userId ? { ...user, role: newRole } : user
     );
-    const updatedPresentation = {
-      ...presentation,
-      users: updatedUsers,
-    };
+    const updatedPresentation = { ...presentation, users: updatedUsers };
     setPresentation(updatedPresentation);
     emitChangeUserRole(userId, newRole);
   };
@@ -138,6 +131,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
             onUpdateContent={onUpdateContent}
             onUpdatePosition={onUpdatePosition}
             onAddTextBlock={addTextBlock}
+            onDeleteElement={onDeleteElement}
           />
         ) : (
           <div className="text-center text-gray-500 py-8">

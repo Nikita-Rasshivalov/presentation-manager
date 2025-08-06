@@ -63,6 +63,7 @@ export const PresentationPage: React.FC = () => {
       nickname={nickname}
       emitPresentationUpdate={emitPresentationUpdate}
       emitChangeUserRole={emitChangeUserRole}
+      socket={socket}
     />
   );
 };
