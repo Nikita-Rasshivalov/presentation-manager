@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
 import MDEditor from "@uiw/react-md-editor";
 import { SlideElement } from "../../types/types";
 
@@ -14,7 +14,7 @@ interface SlideElementItemProps {
   isViewer?: boolean;
 }
 
-export const SlideElementItem: React.FC<SlideElementItemProps> = ({
+export const SlideElementItem: FC<SlideElementItemProps> = ({
   el,
   onUpdateContent,
   onDragStart,
@@ -23,9 +23,17 @@ export const SlideElementItem: React.FC<SlideElementItemProps> = ({
   isViewer = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const dragStartPos = React.useRef<{ x: number; y: number } | null>(null);
-  const dragged = React.useRef(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [localContent, setLocalContent] = useState(el.content);
+
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalContent(el.content);
+    }
+  }, [el.content, isEditing]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (!draggable || isEditing || isViewer) return;
@@ -58,13 +66,15 @@ export const SlideElementItem: React.FC<SlideElementItemProps> = ({
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     function handleDocumentClick(event: MouseEvent) {
       if (
         isEditing &&
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
+        // При выходе из редактирования обновляем контент в родителе
+        onUpdateContent(el.id, localContent);
         setIsEditing(false);
       }
     }
@@ -73,7 +83,7 @@ export const SlideElementItem: React.FC<SlideElementItemProps> = ({
     return () => {
       document.removeEventListener("mousedown", handleDocumentClick);
     };
-  }, [isEditing]);
+  }, [isEditing, localContent, el.id, onUpdateContent]);
 
   return (
     <div
@@ -129,14 +139,19 @@ export const SlideElementItem: React.FC<SlideElementItemProps> = ({
       {isEditing ? (
         <>
           <MDEditor
-            value={el.content}
-            onChange={(val = "") => onUpdateContent(el.id, val)}
+            value={localContent}
+            onChange={(val) => {
+              const newVal = val ?? "";
+              setLocalContent(newVal);
+              onUpdateContent(el.id, newVal);
+            }}
             height={200}
             preview="edit"
           />
           <button
             onClick={(e) => {
               e.stopPropagation();
+              onUpdateContent(el.id, localContent);
               setIsEditing(false);
             }}
             className="mt-2 px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"

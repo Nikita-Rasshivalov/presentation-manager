@@ -57,7 +57,6 @@ export function useSlideActions(
     (elementId: string, content: string, pos: { x: number; y: number }) => {
       if (!socket || !role) return;
       if (role !== UserRole.CREATOR && role !== UserRole.EDITOR) return;
-
       socket.emit("edit_element", { elementId, content, pos });
     },
     [socket, role]
@@ -85,9 +84,14 @@ export function useSlideActions(
       const element = elementsRef.current.find((el) => el.id === id);
       if (!element) return;
 
+      const updatedElements = elementsRef.current.map((el) =>
+        el.id === id ? { ...el, content } : el
+      );
+      updateElements(updatedElements);
+
       editElement(id, content, { x: element.posX, y: element.posY });
     },
-    [slide, role, editElement]
+    [slide, role, editElement, updateElements]
   );
 
   const onUpdatePosition = useCallback(
@@ -115,7 +119,7 @@ export function useSlideActions(
     )
       return;
 
-    addElement("", { x: 50, y: 50 }, { width: 200, height: 100 });
+    addElement(" ", { x: 50, y: 50 }, { width: 200, height: 100 });
   }, [slide, role, addElement]);
 
   const onDeleteElement = useCallback(

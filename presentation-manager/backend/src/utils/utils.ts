@@ -19,6 +19,12 @@ export function validateStringField(field: any, fieldName: string) {
   }
 }
 
+export function validateStringOrEmpty(field: any, fieldName: string) {
+  if (typeof field !== "string") {
+    throw new Error(`Invalid field: ${fieldName} must be a string`);
+  }
+}
+
 export function validatePosition(pos: any) {
   if (
     typeof pos !== "object" ||

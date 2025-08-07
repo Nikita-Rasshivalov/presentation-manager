@@ -8,6 +8,7 @@ import {
   validateStringField,
   validatePosition,
   validateSize,
+  validateStringOrEmpty,
 } from "../utils/utils.ts";
 
 export async function emitUserList(io: Server, presentationId: string) {
@@ -87,7 +88,7 @@ export function handlePresentationEvents(socket: Socket, io: Server) {
   socket.on("edit_element", async ({ elementId, content, pos }) => {
     try {
       validateStringField(elementId, "elementId");
-      validateStringField(content, "content");
+      validateStringOrEmpty(content, "content");
       validatePosition(pos);
 
       const session = await getSession(socket.id);
