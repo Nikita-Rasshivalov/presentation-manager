@@ -20,6 +20,7 @@ export interface SlideElement {
   posX: number;
   posY: number;
   content: string;
+  isNew?: boolean;
 }
 
 export interface Slide {

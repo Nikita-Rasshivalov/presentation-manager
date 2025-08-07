@@ -20,6 +20,7 @@ export function useSlideActions(
     (newElements: SlideElement[]) => {
       if (!slide) return;
 
+      elementsRef.current = newElements;
       updateSlideElements(slide.id, newElements);
 
       if (emitPresentationUpdate && presentation) {
